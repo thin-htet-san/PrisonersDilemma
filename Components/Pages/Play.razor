@@ -1,0 +1,293 @@
+@page "/play"
+@rendermode InteractiveServer
+@inject GameEngine Engine
+@inject StrategyCatalog Catalog
+
+<PageTitle>Play vs AI</PageTitle>
+
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Mode 01</p>
+        <h2>Play one round at a time against a hidden strategy.</h2>
+        <p>
+            Choose the opponent and play through the match. The round history and score rail update after every move.
+        </p>
+        <div class="strategy-tags">
+            <span class="tag">Manual play</span>
+            <span class="tag">Adaptive AI</span>
+            <span class="tag">Visible history</span>
+        </div>
+    </div>
+
+    <div class="hero-figure">
+        <div>
+            <p class="matrix-label">Opponent</p>
+            <h3 style="margin: 0;">@SelectedStrategy.Name</h3>
+            <p style="margin: 0;">@SelectedStrategy.Description</p>
+        </div>
+        <div class="scoreboard">
+            <div class="score-card">
+                <span class="label">You</span>
+                <span class="value">@playerTotal</span>
+            </div>
+            <div class="score-card">
+                <span class="label">AI</span>
+                <span class="value">@aiTotal</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="panel control-grid">
+    <div class="control-group">
+        <label for="strategy">Opponent strategy</label>
+        <select id="strategy" @bind="selectedStrategyId">
+            @foreach (var strategy in Catalog.All)
+            {
+                <option value="@strategy.Id">@strategy.Name</option>
+            }
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="rounds">Match length</label>
+        <input id="rounds" type="number" min="5" max="100" step="1" @bind="matchRounds" />
+    </div>
+    <div class="control-group">
+        <label for="seed">Seed</label>
+        <input id="seed" type="number" @bind="seed" />
+    </div>
+    <div class="control-group" style="align-self:end;">
+        <button class="btn btn-primary" @onclick="StartNewMatch">Start new match</button>
+    </div>
+</section>
+
+<section class="match-grid">
+    <article class="panel">
+        <div class="status-banner">
+            <strong>@StatusHeading</strong>
+            <span>@statusMessage</span>
+        </div>
+
+        <div class="scoreboard" style="margin-top: 1rem;">
+            <div class="score-card">
+                <span class="label">Round</span>
+                <span class="value">@CurrentRoundLabel</span>
+            </div>
+            <div class="score-card">
+                <span class="label">Result</span>
+                <span class="value">@MatchStateLabel</span>
+            </div>
+        </div>
+
+        <div class="control-grid" style="margin-top: 1rem;">
+            <button class="btn btn-success" disabled="@matchComplete" @onclick="() => ChooseMove(GameMove.Cooperate)">Cooperate</button>
+            <button class="btn btn-primary" disabled="@matchComplete" @onclick="() => ChooseMove(GameMove.Betray)">Betray</button>
+            <button class="btn btn-outline-light" @onclick="StartNewMatch">Reset match</button>
+            <div></div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <p class="eyebrow">Round history</p>
+            @if (rounds.Count == 0)
+            {
+                <p>No rounds yet. Start with cooperation or go straight for betrayal.</p>
+            }
+            else
+            {
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Round</th>
+                            <th>You</th>
+                            <th>AI</th>
+                            <th>You score</th>
+                            <th>AI score</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var round in rounds)
+                        {
+                            <tr>
+                                <td>@round.RoundNumber</td>
+                                <td><span class="move-badge @(MoveClass(round.PlayerAMove))">@MoveLabel(round.PlayerAMove)</span></td>
+                                <td><span class="move-badge @(MoveClass(round.PlayerBMove))">@MoveLabel(round.PlayerBMove)</span></td>
+                                <td>@round.PlayerAScore</td>
+                                <td>@round.PlayerBScore</td>
+                                <td>@round.PlayerATotal / @round.PlayerBTotal</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        @if (completedMatch is not null)
+        {
+            <div class="analysis-panel" style="margin-top: 1rem;">
+                <p class="eyebrow">Match analysis</p>
+                <h3 style="margin: 0 0 0.6rem;">Why this match ended the way it did</h3>
+                <p style="margin-top: 0;">@completedMatch.NarrativeSummary</p>
+                <div class="analysis-grid">
+                    <div class="metric">
+                        <span>Longest cooperation streak</span>
+                        <strong>@completedMatch.PlayerALongestCooperationStreak / @completedMatch.PlayerBLongestCooperationStreak</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Longest betrayal streak</span>
+                        <strong>@completedMatch.PlayerALongestBetrayalStreak / @completedMatch.PlayerBLongestBetrayalStreak</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Turning point</span>
+                        <strong>@(completedMatch.TurningPointRound?.ToString() ?? "None")</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Turning point note</span>
+                        <strong>@completedMatch.TurningPointSummary</strong>
+                    </div>
+                </div>
+            </div>
+        }
+    </article>
+
+    <aside class="panel">
+        <p class="eyebrow">Match stats</p>
+        <div class="metric">
+            <span>Mutual cooperation</span>
+            <strong>@mutualCooperationCount</strong>
+        </div>
+        <div class="metric" style="margin-top: 0.8rem;">
+            <span>Mutual betrayal</span>
+            <strong>@mutualBetrayalCount</strong>
+        </div>
+        <div class="metric" style="margin-top: 0.8rem;">
+            <span>You exploited AI</span>
+            <strong>@playerAExploitationCount</strong>
+        </div>
+        <div class="metric" style="margin-top: 0.8rem;">
+            <span>AI exploited you</span>
+            <strong>@playerBExploitationCount</strong>
+        </div>
+    </aside>
+</section>
+
+@code {
+    private readonly HumanChoiceStrategy humanStrategy = new();
+    private string selectedStrategyId = string.Empty;
+    private int matchRounds = 20;
+    private int seed = 20260717;
+    private List<MatchRound> rounds = new();
+    private IGameStrategy? aiStrategy;
+    private int playerTotal;
+    private int aiTotal;
+    private int mutualCooperationCount;
+    private int mutualBetrayalCount;
+    private int playerAExploitationCount;
+    private int playerBExploitationCount;
+    private bool matchComplete;
+    private string statusMessage = string.Empty;
+    private MatchResult? completedMatch;
+
+    protected override void OnInitialized()
+    {
+        selectedStrategyId = Catalog.Default.Id;
+        StartNewMatch();
+    }
+
+    private StrategyDefinition SelectedStrategy => Catalog.GetById(selectedStrategyId);
+
+    private string CurrentRoundLabel => $"{rounds.Count}/{matchRounds}";
+
+    private string MatchStateLabel => matchComplete ? "Complete" : "In play";
+
+    private string StatusHeading => matchComplete ? "Match finished" : "Match in progress";
+
+    private void StartNewMatch()
+    {
+        rounds = new List<MatchRound>();
+        aiStrategy = Catalog.CreateStrategy(selectedStrategyId, seed);
+        playerTotal = 0;
+        aiTotal = 0;
+        mutualCooperationCount = 0;
+        mutualBetrayalCount = 0;
+        playerAExploitationCount = 0;
+        playerBExploitationCount = 0;
+        matchComplete = false;
+        completedMatch = null;
+        statusMessage = $"Facing {SelectedStrategy.Name}. Choose a move to start round 1.";
+    }
+
+    private void ChooseMove(GameMove move)
+    {
+        if (matchComplete || aiStrategy is null)
+        {
+            return;
+        }
+
+        humanStrategy.SetMove(move);
+        var nextRound = Engine.PlayRound(humanStrategy, aiStrategy, rounds, rounds.Count + 1, playerTotal, aiTotal);
+        rounds.Add(nextRound);
+        playerTotal = nextRound.PlayerATotal;
+        aiTotal = nextRound.PlayerBTotal;
+
+        if (nextRound.IsMutualCooperation)
+        {
+            mutualCooperationCount++;
+            statusMessage = "Both players cooperated.";
+        }
+        else if (nextRound.IsMutualBetrayal)
+        {
+            mutualBetrayalCount++;
+            statusMessage = "Both players betrayed.";
+        }
+        else if (nextRound.PlayerAExploitedPlayerB)
+        {
+            playerAExploitationCount++;
+            statusMessage = "You exploited the opponent.";
+        }
+        else
+        {
+            playerBExploitationCount++;
+            statusMessage = "The opponent exploited you.";
+        }
+
+        if (rounds.Count >= matchRounds)
+        {
+            matchComplete = true;
+            completedMatch = BuildMatchResult();
+            statusMessage = $"Match complete. Winner: {WinnerLabel}.";
+        }
+    }
+
+    private string WinnerLabel => playerTotal == aiTotal ? "Tie" : playerTotal > aiTotal ? "You" : SelectedStrategy.Name;
+
+    private static string MoveLabel(GameMove move) => move == GameMove.Cooperate ? "Cooperate" : "Betray";
+
+    private static string MoveClass(GameMove move) => move == GameMove.Cooperate ? "move-cooperate" : "move-betray";
+
+    private MatchResult BuildMatchResult()
+        => new(
+            "You",
+            SelectedStrategy.Name,
+            rounds.Count,
+            rounds,
+            playerTotal,
+            aiTotal,
+            mutualCooperationCount,
+            mutualBetrayalCount,
+            playerAExploitationCount,
+            playerBExploitationCount);
+
+    private sealed class HumanChoiceStrategy : IGameStrategy
+    {
+        private GameMove currentMove = GameMove.Cooperate;
+
+        public string Name => "You";
+
+        public string Description => "Human player";
+
+        public void SetMove(GameMove move) => currentMove = move;
+
+        public GameMove ChooseMove(IReadOnlyList<RoundResult> history) => currentMove;
+    }
+}

@@ -1,0 +1,123 @@
+@page "/tournament"
+@rendermode InteractiveServer
+@inject TournamentService TournamentService
+@inject StrategyCatalog Catalog
+
+<PageTitle>Tournament</PageTitle>
+
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Mode 03</p>
+        <h2>Run a round-robin tournament across the whole strategy library.</h2>
+        <p>
+            Every pair plays the same number of rounds. The leaderboard shows who wins overall, who cooperates,
+            and which strategy turns memory into score.
+        </p>
+    </div>
+    <div class="hero-figure">
+        <div>
+            <p class="matrix-label">Tournament settings</p>
+            <h3 style="margin: 0;">@roundsPerMatch rounds per pairing</h3>
+            <p style="margin: 0;">Seed: @seed</p>
+        </div>
+        <div class="status-banner">
+            <strong>@(result is null ? "No tournament yet" : "Leaderboard ready")</strong>
+            <span>@(result is null ? "Click run tournament to generate rankings." : $"Matches played: {result.Matches.Count}")</span>
+        </div>
+    </div>
+</section>
+
+<section class="panel control-grid">
+    <div class="control-group">
+        <label for="tournament-rounds">Rounds per match</label>
+        <input id="tournament-rounds" type="number" min="10" max="200" step="5" @bind="roundsPerMatch" />
+    </div>
+    <div class="control-group">
+        <label for="tournament-seed">Seed</label>
+        <input id="tournament-seed" type="number" @bind="seed" />
+    </div>
+    <div class="control-group" style="align-self:end;">
+        <button class="btn btn-primary" @onclick="RunTournament">Run tournament</button>
+    </div>
+    <div class="control-group" style="align-self:end;">
+        <button class="btn btn-outline-light" @onclick="ClearTournament">Clear results</button>
+    </div>
+</section>
+
+@if (result is not null)
+{
+    <section class="panel">
+        <p class="eyebrow">Leaderboard</p>
+        <table class="leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Strategy</th>
+                    <th>Score</th>
+                    <th>Wins</th>
+                    <th>Cooperation</th>
+                    <th>Average</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < result.Standings.Count; i++)
+                {
+                    var standing = result.Standings[i];
+                    var cooperationWidth = Math.Min(100, standing.CooperationRate);
+                    <tr>
+                        <td>@(i + 1)</td>
+                        <td>
+                            <strong>@standing.StrategyName</strong>
+                            <div style="color: var(--muted); font-size: 0.9rem;">@Catalog.GetById(standing.StrategyId).Description</div>
+                        </td>
+                        <td>@standing.TotalScore</td>
+                        <td>@standing.Wins</td>
+                        <td>
+                            <div>@standing.CooperationRate.ToString("0.#")%</div>
+                            <div class="progress-bar-track" aria-hidden="true">
+                                <div class="progress-bar-fill" style=@($"width: {cooperationWidth:0.#}%")></div>
+                            </div>
+                        </td>
+                        <td>@standing.AverageScorePerMatch.ToString("0.#")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <p class="eyebrow">Recent pairings</p>
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Pairing</th>
+                    <th>Winner</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var match in result.Matches.Take(10))
+                {
+                    <tr>
+                        <td>@match.StrategyA vs @match.StrategyB</td>
+                        <td>@match.MatchResult.WinnerLabel</td>
+                        <td>@match.MatchResult.PlayerATotal / @match.MatchResult.PlayerBTotal</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private int roundsPerMatch = 50;
+    private int seed = 20260717;
+    private TournamentResult? result;
+
+    private void RunTournament()
+    {
+        result = TournamentService.RunTournament(new GameSettings(TournamentRounds: roundsPerMatch, Seed: seed));
+    }
+
+    private void ClearTournament() => result = null;
+}

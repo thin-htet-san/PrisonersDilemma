@@ -1,0 +1,311 @@
+@page "/mystery"
+@rendermode InteractiveServer
+@inject GameEngine Engine
+@inject StrategyCatalog Catalog
+
+<PageTitle>Hidden Strategy</PageTitle>
+
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Mode 04</p>
+        <h2>Observe an unknown opponent, then guess its strategy.</h2>
+        <p>
+            The hidden strategy stays concealed until you commit to a guess. The better you read its behavior,
+            the more points you earn.
+        </p>
+        <div class="strategy-tags">
+            <span class="tag">Replayable</span>
+            <span class="tag">Guess the strategy</span>
+            <span class="tag">Scored reveal</span>
+        </div>
+    </div>
+    <div class="hero-figure">
+        <div>
+            <p class="matrix-label">Difficulty</p>
+            <h3 style="margin: 0;">@selectedDifficulty</h3>
+            <p style="margin: 0;">A hidden opponent was chosen from this tier.</p>
+        </div>
+        <div class="status-banner">
+            <strong>@statusHeading</strong>
+            <span>@statusMessage</span>
+        </div>
+    </div>
+</section>
+
+<section class="panel control-grid">
+    <div class="control-group">
+        <label for="difficulty">Difficulty</label>
+        <select id="difficulty" @bind="selectedDifficulty">
+            <option value="@StrategyDifficulty.Easy">Easy</option>
+            <option value="@StrategyDifficulty.Medium">Medium</option>
+            <option value="@StrategyDifficulty.Hard">Hard</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="rounds">Rounds before guessing</label>
+        <input id="rounds" type="number" min="5" max="30" step="1" @bind="guessAfterRounds" />
+    </div>
+    <div class="control-group">
+        <label for="seed">Seed</label>
+        <input id="seed" type="number" @bind="seed" />
+    </div>
+    <div class="control-group" style="align-self:end;">
+        <button class="btn btn-primary" @onclick="StartNewMystery">Start mystery</button>
+    </div>
+</section>
+
+<section class="match-grid">
+    <article class="panel">
+        <div class="scoreboard">
+            <div class="score-card">
+                <span class="label">You</span>
+                <span class="value">@playerTotal</span>
+            </div>
+            <div class="score-card">
+                <span class="label">Unknown opponent</span>
+                <span class="value">@opponentTotal</span>
+            </div>
+        </div>
+
+        <div class="control-grid" style="margin-top: 1rem;">
+            <button class="btn btn-success" disabled="@guessLocked" @onclick="() => PlayRound(GameMove.Cooperate)">Cooperate</button>
+            <button class="btn btn-primary" disabled="@guessLocked" @onclick="() => PlayRound(GameMove.Betray)">Betray</button>
+            <button class="btn btn-outline-light" @onclick="StartNewMystery">Reset mystery</button>
+            <div></div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <p class="eyebrow">Observed rounds</p>
+            @if (rounds.Count == 0)
+            {
+                <p>No observations yet. Open with a move and start reading the opponent.</p>
+            }
+            else
+            {
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Round</th>
+                            <th>You</th>
+                            <th>Opponent</th>
+                            <th>You score</th>
+                            <th>Opponent score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var round in rounds)
+                        {
+                            <tr>
+                                <td>@round.RoundNumber</td>
+                                <td><span class="move-badge @(MoveClass(round.PlayerAMove))">@MoveLabel(round.PlayerAMove)</span></td>
+                                <td><span class="move-badge @(MoveClass(round.PlayerBMove))">@MoveLabel(round.PlayerBMove)</span></td>
+                                <td>@round.PlayerAScore</td>
+                                <td>@round.PlayerBScore</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="analysis-panel" style="margin-top: 1rem;">
+            <p class="eyebrow">Guessing rules</p>
+            <p style="margin-top: 0;">
+                Correct guess after 5 rounds: 500 points. After 10 rounds: 300 points. After 20 rounds: 100 points.
+                Wrong guess: -50 points.
+            </p>
+            <div class="control-grid">
+                <div class="control-group">
+                    <label for="guess">Your guess</label>
+                    <select id="guess" @bind="guessStrategyId">
+                        @foreach (var strategy in availableStrategies)
+                        {
+                            <option value="@strategy.Id">@strategy.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="control-group" style="align-self:end;">
+                    <button class="btn btn-primary" disabled="@guessLocked" @onclick="SubmitGuess">Lock in guess</button>
+                </div>
+                <div class="control-group" style="align-self:end;">
+                    <span class="status-banner">
+                        <strong>@guessStatusHeading</strong>
+                        <span>@guessStatusMessage</span>
+                    </span>
+                </div>
+                <div></div>
+            </div>
+        </div>
+    </article>
+
+    <aside class="panel">
+        <p class="eyebrow">Clues</p>
+        <div class="metric">
+            <span>Difficulty tier</span>
+            <strong>@selectedDifficulty</strong>
+        </div>
+        <div class="metric" style="margin-top: 0.8rem;">
+            <span>Rounds observed</span>
+            <strong>@rounds.Count</strong>
+        </div>
+        <div class="metric" style="margin-top: 0.8rem;">
+            <span>Current guess score</span>
+            <strong>@guessScore</strong>
+        </div>
+
+        @if (revealed)
+        {
+            <div class="analysis-panel" style="margin-top: 1rem;">
+                <p class="eyebrow">Reveal</p>
+                <h3 style="margin: 0 0 0.4rem;">@hiddenStrategy.Name</h3>
+                <p style="margin-top: 0;">@hiddenStrategy.Description</p>
+                <div class="strategy-tags">
+                    <span class="tag">Persona: @selectedStrategy.Persona</span>
+                    <span class="tag">Difficulty: @selectedStrategy.Difficulty</span>
+                    <span class="tag">Aggression: @selectedStrategy.Aggression</span>
+                    <span class="tag">Forgiveness: @selectedStrategy.Forgiveness</span>
+                </div>
+                <p style="margin-top: 1rem;">@result?.NarrativeSummary</p>
+            </div>
+        }
+    </aside>
+</section>
+
+@code {
+    private readonly HumanChoiceStrategy humanStrategy = new();
+    private StrategyDifficulty selectedDifficulty = StrategyDifficulty.Easy;
+    private int guessAfterRounds = 10;
+    private int seed = 20260717;
+    private string guessStrategyId = string.Empty;
+    private List<MatchRound> rounds = new();
+    private IGameStrategy hiddenStrategy = new AlwaysCooperateStrategy();
+    private StrategyDefinition selectedStrategy = null!;
+    private MatchResult? result;
+    private int playerTotal;
+    private int opponentTotal;
+    private bool revealed;
+    private int guessScore;
+    private string guessStatusHeading = "Guess pending";
+    private string guessStatusMessage = "Play a few rounds before locking in your guess.";
+
+    private IEnumerable<StrategyDefinition> availableStrategies => Catalog.All.Where(strategy => strategy.Difficulty == selectedDifficulty);
+
+    private bool guessLocked => revealed;
+
+    private string statusHeading => revealed ? "Strategy revealed" : "Mystery in progress";
+
+    private string statusMessage => revealed
+        ? $"The hidden strategy was {hiddenStrategy.Name}."
+        : "Study the pattern before you guess.";
+
+    protected override void OnInitialized()
+    {
+        StartNewMystery();
+    }
+
+    private void StartNewMystery()
+    {
+        rounds = new List<MatchRound>();
+        result = null;
+        revealed = false;
+        guessScore = 0;
+        playerTotal = 0;
+        opponentTotal = 0;
+        guessStatusHeading = "Guess pending";
+        guessStatusMessage = $"Play at least {guessAfterRounds} rounds before locking in your guess.";
+
+        var pool = Catalog.All.Where(strategy => strategy.Difficulty == selectedDifficulty).ToList();
+        if (pool.Count == 0)
+        {
+            selectedStrategy = Catalog.Default;
+        }
+        else
+        {
+            var random = new Random(seed);
+            selectedStrategy = pool[random.Next(pool.Count)];
+        }
+
+        hiddenStrategy = selectedStrategy.CreateStrategy(seed + 1);
+        guessStrategyId = selectedStrategy.Id;
+    }
+
+    private void PlayRound(GameMove move)
+    {
+        if (revealed)
+        {
+            return;
+        }
+
+        humanStrategy.SetMove(move);
+        var nextRound = Engine.PlayRound(humanStrategy, hiddenStrategy, rounds, rounds.Count + 1, playerTotal, opponentTotal);
+        rounds.Add(nextRound);
+        playerTotal = nextRound.PlayerATotal;
+        opponentTotal = nextRound.PlayerBTotal;
+        guessStatusMessage = rounds.Count >= guessAfterRounds
+            ? $"You have seen {rounds.Count} round(s) and can safely make a guess now."
+            : $"You have seen {rounds.Count} round(s). Keep watching for a pattern.";
+    }
+
+    private void SubmitGuess()
+    {
+        if (revealed || rounds.Count == 0)
+        {
+            guessStatusHeading = "Not enough evidence";
+            guessStatusMessage = "Play at least one round before guessing.";
+            return;
+        }
+
+        revealed = true;
+        result = BuildResult();
+
+        var guessedStrategy = Catalog.GetById(guessStrategyId);
+        var correct = guessedStrategy.Id == selectedStrategy.Id;
+
+        if (correct)
+        {
+            guessScore = rounds.Count <= 5 ? 500
+                : rounds.Count <= 10 ? 300
+                : rounds.Count <= 20 ? 100
+                : 50;
+        }
+        else
+        {
+            guessScore = -50;
+        }
+
+        guessStatusHeading = correct ? "Correct guess" : "Wrong guess";
+        guessStatusMessage = correct
+            ? $"You identified {selectedStrategy.Name} and earned {guessScore} points."
+            : $"You guessed {guessedStrategy.Name}, but the hidden strategy was {selectedStrategy.Name}.";
+    }
+
+    private MatchResult BuildResult()
+        => new(
+            "You",
+            selectedStrategy.Name,
+            rounds.Count,
+            rounds,
+            playerTotal,
+            opponentTotal,
+            rounds.Count(round => round.IsMutualCooperation),
+            rounds.Count(round => round.IsMutualBetrayal),
+            rounds.Count(round => round.PlayerAExploitedPlayerB),
+            rounds.Count(round => round.PlayerBExploitedPlayerA));
+
+    private static string MoveLabel(GameMove move) => move == GameMove.Cooperate ? "Cooperate" : "Betray";
+
+    private static string MoveClass(GameMove move) => move == GameMove.Cooperate ? "move-cooperate" : "move-betray";
+
+    private sealed class HumanChoiceStrategy : IGameStrategy
+    {
+        private GameMove currentMove = GameMove.Cooperate;
+
+        public string Name => "You";
+
+        public string Description => "Human player";
+
+        public void SetMove(GameMove move) => currentMove = move;
+
+        public GameMove ChooseMove(IReadOnlyList<RoundResult> history) => currentMove;
+    }
+}

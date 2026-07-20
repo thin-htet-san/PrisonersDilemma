@@ -1,0 +1,54 @@
+@page "/strategies"
+@inject StrategyCatalog Catalog
+
+<PageTitle>Strategy Library</PageTitle>
+
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Library</p>
+        <h2>Eight strategies, each with a different attitude toward trust.</h2>
+        <p>
+            Use this library to understand how each strategy behaves before you choose it in a match or tournament.
+        </p>
+    </div>
+    <div class="hero-figure">
+        <div>
+            <p class="matrix-label">Library size</p>
+            <h3 style="margin: 0;">@Catalog.All.Count strategies</h3>
+            <p style="margin: 0;">From unconditional cooperation to pattern hunting.</p>
+        </div>
+        <div class="round-strip">
+            <span class="tag">Aggression</span>
+            <span class="tag">Forgiveness</span>
+            <span class="tag">Complexity</span>
+        </div>
+    </div>
+</section>
+
+<section class="strategy-grid">
+    @foreach (var strategy in Catalog.All)
+    {
+        <article class="strategy-card panel">
+            <h3>@strategy.Name</h3>
+            <p>@strategy.Description</p>
+            <div class="strategy-tags">
+                <span class="tag">Persona: @strategy.Persona</span>
+                <span class="tag">Difficulty: @strategy.Difficulty</span>
+                <span class="tag">Aggression: @Label(strategy.Aggression)</span>
+                <span class="tag">Forgiveness: @Label(strategy.Forgiveness)</span>
+                <span class="tag">Complexity: @Label(strategy.Complexity)</span>
+            </div>
+        </article>
+    }
+</section>
+
+@code {
+    private static string Label(int value) => value switch
+    {
+        <= 1 => "Low",
+        2 => "Modest",
+        3 => "Medium",
+        4 => "High",
+        _ => "Extreme"
+    };
+}

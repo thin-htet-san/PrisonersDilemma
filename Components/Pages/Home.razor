@@ -1,0 +1,75 @@
+@page "/"
+
+<PageTitle>Prisoner's Dilemma</PageTitle>
+
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">A game about trust under pressure</p>
+        <h2>See how cooperation survives, fails, and returns in repeated rounds.</h2>
+        <p>
+            Prisoner's Dilemma is a strategy game where each choice changes the next one.
+            Play against AI, watch two strategies face off, or compare every strategy in a tournament.
+        </p>
+
+        <div class="strategy-tags">
+            <span class="tag">Player vs AI</span>
+            <span class="tag">Simulation</span>
+            <span class="tag">Tournament</span>
+            <span class="tag">Strategy Library</span>
+        </div>
+    </div>
+
+    <div class="hero-figure">
+        <div>
+            <p class="matrix-label">Core rule</p>
+            <h3 style="margin: 0 0 0.5rem;">One betrayal can reshape the whole match.</h3>
+            <p style="margin: 0;">
+                The payoff matrix rewards short-term gain, but repeated play rewards memory,
+                retaliation, forgiveness, and pattern recognition.
+            </p>
+        </div>
+
+        <div class="round-strip" aria-label="Example round history">
+            <span class="round-token cooperate">C</span>
+            <span class="round-token cooperate">C</span>
+            <span class="round-token betray">D</span>
+            <span class="round-token cooperate">C</span>
+            <span class="round-token betray">D</span>
+            <span class="round-token betray">D</span>
+            <span class="round-token cooperate">C</span>
+        </div>
+    </div>
+</section>
+
+<section class="summary-grid">
+    <article class="score-card">
+        <span class="label">Play</span>
+        <span class="value">Round by round</span>
+        <p>Choose cooperate or betray and watch the score change immediately.</p>
+    </article>
+    <article class="score-card">
+        <span class="label">Watch</span>
+        <span class="value">Strategy vs strategy</span>
+        <p>See how memory-based and opportunistic strategies perform against each other.</p>
+    </article>
+    <article class="score-card">
+        <span class="label">Rank</span>
+        <span class="value">Tournament table</span>
+        <p>Run a round-robin tournament and compare total score, wins, and cooperation rate.</p>
+    </article>
+    <article class="score-card">
+        <span class="label">Study</span>
+        <span class="value">Strategy library</span>
+        <p>Review the behavior, temperament, and difficulty of each strategy.</p>
+    </article>
+</section>
+
+<section class="panel">
+    <p class="eyebrow">Where to begin</p>
+    <div class="control-grid">
+        <a class="btn btn-primary" href="play">Play vs AI</a>
+        <a class="btn btn-outline-light" href="simulation">Watch simulation</a>
+        <a class="btn btn-outline-light" href="tournament">Run tournament</a>
+        <a class="btn btn-outline-light" href="strategies">Browse strategies</a>
+    </div>
+</section>

@@ -1,0 +1,55 @@
+@inherits LayoutComponentBase
+
+<div class="game-shell">
+    <aside class="game-sidebar">
+        <div class="brand-block">
+            <p class="brand-kicker">Repeated game laboratory</p>
+            <a class="brand-title" href="/">Prisoner's Dilemma</a>
+            <p class="brand-copy">A simulation about trust, retaliation, and the price of short-term gain.</p>
+        </div>
+
+        <NavMenu />
+
+        <div class="matrix-card">
+            <p class="matrix-label">Payoff matrix</p>
+            <div class="matrix-grid">
+                <div>
+                    <span>CC</span>
+                    <strong>3 / 3</strong>
+                </div>
+                <div>
+                    <span>CD</span>
+                    <strong>0 / 5</strong>
+                </div>
+                <div>
+                    <span>DC</span>
+                    <strong>5 / 0</strong>
+                </div>
+                <div>
+                    <span>DD</span>
+                    <strong>1 / 1</strong>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="game-main">
+        <header class="game-topbar">
+            <div>
+                <p class="eyebrow">Blazor simulation</p>
+                <h1>Prisoner's Dilemma</h1>
+            </div>
+            <div class="topbar-pill">Local play</div>
+        </header>
+
+        <section class="game-content">
+            @Body
+        </section>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">x</span>
+</div>

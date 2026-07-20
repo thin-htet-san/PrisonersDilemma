@@ -1,0 +1,205 @@
+@page "/simulation"
+@rendermode InteractiveServer
+@inject GameEngine Engine
+@inject StrategyCatalog Catalog
+
+<PageTitle>Simulation</PageTitle>
+
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Mode 02</p>
+        <h2>Watch two strategies play the same repeated game.</h2>
+        <p>
+            Run a match, inspect each round, and compare how memory, retaliation, and forgiveness affect the final score.
+        </p>
+    </div>
+    <div class="hero-figure">
+        <div>
+            <p class="matrix-label">Selected pairing</p>
+            <h3 style="margin: 0;">@StrategyA.Name vs @StrategyB.Name</h3>
+            <p style="margin: 0;">@StrategyA.Description</p>
+        </div>
+        <div class="round-strip">
+            @if (result is not null)
+            {
+                @foreach (var round in result.Rounds.Take(8))
+                {
+                    <span class="round-token @(round.PlayerAMove == GameMove.Cooperate ? "cooperate" : "betray")">
+                        @(round.RoundNumber)
+                    </span>
+                }
+            }
+            else
+            {
+                <span class="round-token cooperate">?</span>
+                <span class="round-token betray">?</span>
+                <span class="round-token cooperate">?</span>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="panel control-grid">
+    <div class="control-group">
+        <label for="strategy-a">Strategy A</label>
+        <select id="strategy-a" @bind="strategyAId">
+            @foreach (var strategy in Catalog.All)
+            {
+                <option value="@strategy.Id">@strategy.Name</option>
+            }
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="strategy-b">Strategy B</label>
+        <select id="strategy-b" @bind="strategyBId">
+            @foreach (var strategy in Catalog.All)
+            {
+                <option value="@strategy.Id">@strategy.Name</option>
+            }
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="rounds">Rounds</label>
+        <input id="rounds" type="number" min="5" max="100" step="1" @bind="roundsPerMatch" />
+    </div>
+    <div class="control-group">
+        <label for="seed">Seed</label>
+        <input id="seed" type="number" @bind="seed" />
+    </div>
+</section>
+
+<section class="panel" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <button class="btn btn-primary" @onclick="RunMatch">Run match</button>
+    <button class="btn btn-outline-light" @onclick="ResetResult">Clear result</button>
+</section>
+
+<section class="summary-grid">
+    <article class="metric">
+        <span>Player A total</span>
+        <strong>@(result?.PlayerATotal ?? 0)</strong>
+    </article>
+    <article class="metric">
+        <span>Player B total</span>
+        <strong>@(result?.PlayerBTotal ?? 0)</strong>
+    </article>
+    <article class="metric">
+        <span>Winner</span>
+        <strong>@(result?.WinnerLabel ?? "None")</strong>
+    </article>
+    <article class="metric">
+        <span>Rounds</span>
+        <strong>@(result?.RoundsPlayed ?? 0)</strong>
+    </article>
+</section>
+
+@if (result is not null)
+{
+    <section class="match-grid">
+        <article class="panel">
+            <p class="eyebrow">Round history</p>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Round</th>
+                        <th>A</th>
+                        <th>B</th>
+                        <th>A score</th>
+                        <th>B score</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var round in result.Rounds)
+                    {
+                        <tr>
+                            <td>@round.RoundNumber</td>
+                            <td><span class="move-badge @(MoveClass(round.PlayerAMove))">@MoveLabel(round.PlayerAMove)</span></td>
+                            <td><span class="move-badge @(MoveClass(round.PlayerBMove))">@MoveLabel(round.PlayerBMove)</span></td>
+                            <td>@round.PlayerAScore</td>
+                            <td>@round.PlayerBScore</td>
+                            <td>@round.PlayerATotal / @round.PlayerBTotal</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </article>
+
+        <aside class="panel">
+            <p class="eyebrow">Match details</p>
+            <div class="metric">
+                <span>Mutual cooperation</span>
+                <strong>@result.MutualCooperationCount</strong>
+            </div>
+            <div class="metric" style="margin-top: 0.8rem;">
+                <span>Mutual betrayal</span>
+                <strong>@result.MutualBetrayalCount</strong>
+            </div>
+            <div class="metric" style="margin-top: 0.8rem;">
+                <span>A cooperation rate</span>
+                <strong>@result.PlayerACooperationRate.ToString("0.#")%</strong>
+            </div>
+            <div class="metric" style="margin-top: 0.8rem;">
+                <span>B cooperation rate</span>
+                <strong>@result.PlayerBCooperationRate.ToString("0.#")%</strong>
+            </div>
+        </aside>
+    </section>
+
+    <section class="analysis-panel">
+        <p class="eyebrow">Match analysis</p>
+        <h3 style="margin: 0 0 0.6rem;">What happened in plain language</h3>
+        <p style="margin-top: 0;">@result.NarrativeSummary</p>
+        <div class="analysis-grid">
+            <div class="metric">
+                <span>Longest cooperation streak</span>
+                <strong>@result.PlayerALongestCooperationStreak / @result.PlayerBLongestCooperationStreak</strong>
+            </div>
+            <div class="metric">
+                <span>Longest betrayal streak</span>
+                <strong>@result.PlayerALongestBetrayalStreak / @result.PlayerBLongestBetrayalStreak</strong>
+            </div>
+            <div class="metric">
+                <span>Turning point</span>
+                <strong>@(result.TurningPointRound?.ToString() ?? "None")</strong>
+            </div>
+            <div class="metric">
+                <span>Turning point note</span>
+                <strong>@result.TurningPointSummary</strong>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private string strategyAId = string.Empty;
+    private string strategyBId = string.Empty;
+    private int roundsPerMatch = 20;
+    private int seed = 20260717;
+    private MatchResult? result;
+
+    protected override void OnInitialized()
+    {
+        strategyAId = Catalog.All[2].Id;
+        strategyBId = Catalog.All[5].Id;
+    }
+
+    private StrategyDefinition StrategyA => Catalog.GetById(strategyAId);
+
+    private StrategyDefinition StrategyB => Catalog.GetById(strategyBId);
+
+    private void RunMatch()
+    {
+        result = Engine.PlayMatch(
+            StrategyA.CreateStrategy(seed + 1),
+            StrategyB.CreateStrategy(seed + 2),
+            roundsPerMatch,
+            StrategyA.Name,
+            StrategyB.Name);
+    }
+
+    private void ResetResult() => result = null;
+
+    private static string MoveLabel(GameMove move) => move == GameMove.Cooperate ? "Cooperate" : "Betray";
+
+    private static string MoveClass(GameMove move) => move == GameMove.Cooperate ? "move-cooperate" : "move-betray";
+}
